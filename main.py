@@ -1,4 +1,4 @@
-
+# Ocr reader 
 LABEL_DIR = '/content/drive/MyDrive/Medivoice/labels'
 ocr_result = extract_text_from_latest_label(LABEL_DIR)
 
