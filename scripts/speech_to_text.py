@@ -1,6 +1,6 @@
 import os
 from pydub import AudioSegment
-import speech_recognition as sr
+import whisper
 from IPython.display import Audio
 
 def convert_to_wav(input_path, output_path="converted.wav"):
@@ -12,20 +12,18 @@ def convert_to_wav(input_path, output_path="converted.wav"):
     audio.export(output_path, format="wav")
     return output_path
 
-def speech_to_text(audio_file):
-    """
-    Transcribes speech from a WAV audio file using Google's Speech API.
-    """
-    r = sr.Recognizer()
-    with sr.AudioFile(audio_file) as source:
-        audio_text = r.record(source)  # record full audio
-        try:
-            print('Transcribing...')
-            text = r.recognize_google(audio_text)
-            print('Done.')
-            return text
-        except sr.UnknownValueError:
-            return "Speech recognition could not understand the audio."
-        except sr.RequestError as e:
-            return f"Could not request results from Google API; {e}"
 
+def speech_to_text(audio_path, model_size="base"):
+    """
+    Transcribes speech from an audio file using OpenAI's Whisper.
+    Returns:
+        str: Transcribed text from the audio
+    """
+    print(f"Loading Whisper model: {model_size}...")
+    model = whisper.load_model(model_size)
+    print(f"Transcribing: {audio_path}")
+    
+    result = model.transcribe(audio_path)
+    
+    print("Transcription complete.")
+    return result["text"]
