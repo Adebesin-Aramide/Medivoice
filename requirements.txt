@@ -1,4 +1,4 @@
 pydub
-SpeechRecognition
+openai-whisper
 easyocr
 glob
