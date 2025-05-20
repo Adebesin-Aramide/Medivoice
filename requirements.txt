@@ -3,3 +3,4 @@ openai-whisper
 easyocr
 langchain
 SpeechRecognition
+huggingface-hub
