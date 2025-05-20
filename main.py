@@ -14,15 +14,15 @@ def main():
     os.makedirs(AUDIO_DIR, exist_ok=True)
 
     # 2) OCR pipeline
-    print("🖼  Running OCR pipeline…")
+    print("✅  Running OCR pipeline…")
     img_path       = get_latest_image(LABEL_DIR)
     raw_lines      = extract_text(img_path)
     clean_lines    = preprocess(raw_lines)
 
-    print("\n=== RAW OCR TEXT ===")
+    print("\n=== ✅ RAW OCR TEXT ===")
     for line in raw_lines:
         print(" •", line)
-    print("\n=== CLEANED OCR TEXT ===")
+    print("\n=== ✅ CLEANED OCR TEXT ===")
     for line in clean_lines:
         print(" •", line)
 
@@ -44,11 +44,11 @@ def main():
     convert_to_wav(latest_audio, wav_path)
     user_command = speech_to_text(wav_path)
 
-    print("\n=== USER COMMAND ===")
+    print("\n=== ✅ USER COMMAND ===")
     print(user_command)
 
     # 4) LLM inference
-    print("\n🤖  Generating answer from Mistral…")
+    print("\n🤖  Generating answer…")
     answer = generate_answer(clean_lines, user_command)
 
     print("\n🔍 Model’s Answer:\n")
