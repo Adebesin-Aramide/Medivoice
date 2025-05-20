@@ -1,4 +1,5 @@
 pydub
 openai-whisper
 easyocr
-glob
+langchain
+SpeechRecognition

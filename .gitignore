@@ -1,0 +1,3 @@
+# never commit your bulky images or audio recordings
+.env
+__pycache__/
