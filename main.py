@@ -40,9 +40,7 @@ def main():
         return
 
     latest_audio = os.path.join(AUDIO_DIR, audio_files[-1])
-    wav_path     = os.path.join(AUDIO_DIR, "converted.wav")
-    convert_to_wav(latest_audio, wav_path)
-    user_command = speech_to_text(wav_path)
+    user_command = speech_to_text(latest_audio)
 
     print("\n=== ✅ USER COMMAND ===")
     print(user_command)
