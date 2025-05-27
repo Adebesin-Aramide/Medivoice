@@ -1,37 +1,60 @@
+# scripts/llm.py
+
 import os
-from huggingface_hub import InferenceClient
+from transformers import pipeline
+
+# 1) instantiate the local Mistral-Instruct pipeline
+#    * don't pass `device=` if you loaded with accelerate
+generator = pipeline(
+    "text-generation",
+    model="mistralai/Mistral-7B-Instruct-v0.2",
+    # device_map="auto",      # optional if you want HF to shard across GPUs
+    # the following defaults can be overridden per-call if you like:
+    max_new_tokens=512,
+    do_sample=True,
+    temperature=0.7,
+    return_full_text=False,    # <— strip off the prompt
+)
 
 def build_prompt(ocr_lines: list[str], user_question: str) -> str:
+    """
+    Combine OCR + user question into a single instruction,
+    with explicit guidelines about style and content.
+    """
     ocr_block = "\n".join(f"- {line}" for line in ocr_lines)
-    return f"""<|system|>
-You are a knowledgeable, friendly medical assistant. Below is the raw text from a medication label and a user’s follow-up question.
 
-Medication label text:
-{ocr_block}
+    return (
+        "You are a knowledgeable, friendly medical assistant.\n"
+        "Your task is to answer the user’s question based on the provided medication label.\n\n"
 
-User’s question:
-{user_question}
-
-Please answer the user as clearly and naturally as you can, drawing only on the information in the label. If the label doesn’t provide enough detail to answer, say so in a polite way (for example, “I’m not sure from this label alone; you may need to check with a pharmacist or doctor.”).  
-</s>
-<|assistant|>
-"""
-
-def generate_answer(ocr_lines: list[str], user_question: str) -> str:
-    token = os.getenv("HUGGINGFACEHUB_API_TOKEN")
-    if not token:
-        raise RuntimeError("Set HUGGINGFACEHUB_API_TOKEN in environment!")
-
-    client = InferenceClient(token=token)
-    prompt = build_prompt(ocr_lines, user_question)
-
-    response = client.text_generation(
-        model="HuggingFaceH4/zephyr-7b-beta",
-        prompt=prompt,
-        max_new_tokens=500,
-        temperature=0.7,
-        top_p=0.95,
-        repetition_penalty=1.2,
+        "Please follow these guidelines when answering:\n"
+        "  • Be clear and concise.\n"
+        "  • Be precise—stick exactly to what you know from the label.\n"
+        "  • Use simple, everyday English.\n"
+        "  • Do NOT invent or hallucinate any details. "
+        "If the label doesn’t provide enough information, "
+        'respond with "visit the nearest hospital for more details".\n\n'
+        "Medication label text:\n"
+        f"{ocr_block}\n\n"
+        "User’s question:\n"
+        f"{user_question}\n\n"
+        "Answer:"
     )
 
-    return response.strip()
+
+def generate_answer(ocr_lines: list[str], user_question: str) -> str:
+    prompt = build_prompt(ocr_lines, user_question)
+
+    # 2) run the model — prompt won't be echoed
+    outputs = generator(
+        prompt,
+        # you can still tweak per-call if needed:
+        # max_new_tokens=256,
+        # do_sample=True,
+        # temperature=0.5,
+        # return_full_text=False
+    )
+
+    # 3) pipeline returns List[dict]
+    answer = outputs[0]["generated_text"]
+    return answer.strip()
