@@ -1,60 +1,88 @@
-# scripts/llm.py
-
 import os
-from transformers import pipeline
+import time
+from huggingface_hub import InferenceClient
+from typing import List, Dict
+import warnings
+warnings.filterwarnings("ignore")
 
-# 1) instantiate the local Mistral-Instruct pipeline
-#    * don't pass `device=` if you loaded with accelerate
-generator = pipeline(
-    "text-generation",
-    model="mistralai/Mistral-7B-Instruct-v0.2",
-    # device_map="auto",      # optional if you want HF to shard across GPUs
-    # the following defaults can be overridden per-call if you like:
-    max_new_tokens=512,
-    do_sample=True,
-    temperature=0.7,
-    return_full_text=False,    # <— strip off the prompt
-)
+HF_TOKEN = os.getenv("HF_TOKEN")
+if not HF_TOKEN:
+    raise RuntimeError("Please set the HF_TOKEN environment variable")
 
-def build_prompt(ocr_lines: list[str], user_question: str) -> str:
-    """
-    Combine OCR + user question into a single instruction,
-    with explicit guidelines about style and content.
-    """
+# Configure with timeout and retries
+CLIENTS = {
+    "novita": InferenceClient(
+        provider="novita", 
+        api_key=HF_TOKEN,
+        timeout=30
+    ),
+    "featherless-ai": InferenceClient(
+        provider="featherless-ai", 
+        api_key=HF_TOKEN,
+        timeout=30
+    ),
+    "together": InferenceClient(
+        provider="together", 
+        api_key=HF_TOKEN,
+        timeout=30
+    ),
+}
+
+MODEL_PROVIDER = {
+    "mistralai/Mistral-7B-Instruct-v0.3": "novita",
+    "meta-llama/Meta-Llama-3-8B-Instruct": "novita",
+    "Qwen/Qwen2.5-7B-Instruct": "featherless-ai",
+    "mistralai/Mixtral-8x7B-Instruct-v0.1": "together",
+}
+
+def build_prompt(ocr_lines: List[str], user_question: str) -> str:
+    # Turn the OCR lines into a bullet list
     ocr_block = "\n".join(f"- {line}" for line in ocr_lines)
 
     return (
-        "You are a knowledgeable, friendly medical assistant.\n"
-        "Your task is to answer the user’s question based on the provided medication label.\n\n"
+        "<s>[INST]\n"
+        "You are a medication safety assistant helping visually impaired users, your sole source of information is the medication label.\n\n"
 
-        "Please follow these guidelines when answering:\n"
-        "  • Be clear and concise.\n"
-        "  • Be precise—stick exactly to what you know from the label.\n"
-        "  • Use simple, everyday English.\n"
-        "  • Do NOT invent or hallucinate any details. "
-        "If the label doesn’t provide enough information, "
-        'respond with "visit the nearest hospital for more details".\n\n'
-        "Medication label text:\n"
+        "Follow these rules strictly (25-word maximum):\n"
+        "  1. ANSWER ONLY USING THE LABEL TEXT - do NOT infer or add anything extra.\n"
+        "  2. Keep it under 25 words, in plain, everyday English.\n"
+        "  3. If the label lacks the answer, respond: “Consult a doctor.”\n\n"
+
+        "MEDICATION LABEL:\n"
         f"{ocr_block}\n\n"
-        "User’s question:\n"
+
+        "USER QUESTION:\n"
         f"{user_question}\n\n"
-        "Answer:"
+
+        "YOUR ANSWER:[/INST]"
     )
 
 
-def generate_answer(ocr_lines: list[str], user_question: str) -> str:
+def generate_all_answers(ocr_lines: List[str], user_question: str) -> Dict[str, str]:
     prompt = build_prompt(ocr_lines, user_question)
-
-    # 2) run the model — prompt won't be echoed
-    outputs = generator(
-        prompt,
-        # you can still tweak per-call if needed:
-        # max_new_tokens=256,
-        # do_sample=True,
-        # temperature=0.5,
-        # return_full_text=False
-    )
-
-    # 3) pipeline returns List[dict]
-    answer = outputs[0]["generated_text"]
-    return answer.strip()
+    answers = {}
+    
+    for model_id, provider in MODEL_PROVIDER.items():
+        try:
+            print(f"\nCalling {model_id}...")
+            start_time = time.time()
+            
+            client = CLIENTS[provider]
+            completion = client.chat.completions.create(
+                model=model_id,
+                messages=[{"role": "user", "content": prompt}],
+                max_tokens=150
+            )
+            
+            if completion and completion.choices:
+                answer = completion.choices[0].message.content.strip()
+                answers[model_id] = answer
+                print(f"Response received in {time.time()-start_time:.1f}s")
+            else:
+                answers[model_id] = "Error: Empty response"
+                
+        except Exception as e:
+            answers[model_id] = f"Error: {str(e)}"
+            print(f"Failed on {model_id}: {e}")
+    
+    return answers

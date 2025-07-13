@@ -12,3 +12,4 @@ def make_dir(p: Path) -> Path:
 
 LABEL_DIR = make_dir(Path(os.getenv("MEDIVOICE_LABEL_DIR", BASE_DIR / "labels")))
 AUDIO_DIR = make_dir(Path(os.getenv("MEDIVOICE_AUDIO_DIR", BASE_DIR / "Recordings")))
+YARN_ASSETS_DIR = make_dir(Path(os.getenv("YARNGPT_ASSETS_DIR", BASE_DIR / "yarngpt_assets")))
