@@ -48,5 +48,13 @@ def main():
 
     print("✅  Saved to last_run.json — ready for `evaluate.py`.")
 
+
+    # 4) Select the best model:
+    best_model_id = "mistralai/Mixtral-8x7B-Instruct-v0.1"
+    answer = all_answers[best_model_id]
+
+    print(f"\n🏆 Using {best_model_id}:\n{answer}")
+ 
+
 if __name__ == "__main__":
     main()
