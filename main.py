@@ -49,7 +49,7 @@ def main():
     print("✅  Saved to last_run.json — ready for `evaluate.py`.")
 
 
-    # 4) Select the best model:
+    # 5) Select the best model:
     best_model_id = "mistralai/Mixtral-8x7B-Instruct-v0.1"
     answer = all_answers[best_model_id]
 

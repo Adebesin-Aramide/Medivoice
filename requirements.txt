@@ -1,6 +1,5 @@
-pydub
-openai-whisper
+whisper
 easyocr
 langchain
-SpeechRecognition
 huggingface-hub
+dotenv
